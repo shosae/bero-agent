@@ -41,8 +41,5 @@ class ExecutorService:
             "message": summary or "임무 요약이 준비되었습니다.",
         }
 
-    def report(self, content: str) -> Dict[str, Any]:
-        return {"status": "reported", "message": content}
-
     def wait(self, seconds: int = 1) -> Dict[str, Any]:
         return {"status": "waiting", "seconds": seconds}
