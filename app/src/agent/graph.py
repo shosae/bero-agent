@@ -41,6 +41,8 @@ def _build_graph():
             docs_dir=settings.docs_dir,
             vectorstore_dir=settings.vectorstore_dir,
             embedding_model=settings.embedding_model,
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
         )
     )
     retriever = rag_service.get_conversation_retriever(top_k=int(os.getenv("TOP_K", "4")))

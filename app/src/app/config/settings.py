@@ -16,6 +16,8 @@ class AppSettings:
     llm_provider: str
     llm_model: str
     temperature: float
+    chunk_size: int
+    chunk_overlap: int
 
 
 def load_settings() -> AppSettings:
@@ -26,6 +28,8 @@ def load_settings() -> AppSettings:
         embedding_model=os.getenv("EMBEDDINGS_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
         waypoint_docs_dir=Path(os.getenv("WAYPOINT_DIR", root / "data" / "seed")).resolve(),
         llm_provider=os.getenv("LLM_PROVIDER", "langgraph"),
-        llm_model=os.getenv("LLM_MODEL", "llama-3.1-8b-instruct"),
-        temperature=float(os.getenv("LLM_TEMPERATURE", "0.2")),
+        llm_model=os.getenv("LLM_MODEL", "llama3.1-8b-local"),
+        temperature=float(os.getenv("LLM_TEMPERATURE", "0")),
+        chunk_size=int(os.getenv("CHUNK_SIZE", "700")),
+        chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "150")),
     )

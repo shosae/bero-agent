@@ -2,7 +2,7 @@
   "$schema": "https://langgra.ph/schema.json",
   "dependencies": ["..", "."],
   "graphs": {
-    "rln-rag": "./src/agent/graph.py:graph"
+    "RLN": "./src/agent/graph.py:graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

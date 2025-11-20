@@ -10,7 +10,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
-from rln_rag.vectorstore import (
+from app.services.vectorstore_utils import (
     load_documents,
     split_documents,
     build_embeddings,
@@ -22,12 +22,18 @@ class VectorStoreConfig:
     docs_dir: Path
     vectorstore_dir: Path
     embedding_model: str
+    chunk_size: int = 700
+    chunk_overlap: int = 150
 
 
 def _build_vectorstore(config: VectorStoreConfig) -> FAISS:
-    docs = load_documents(config)
-    split_docs = split_documents(docs, config)
-    embeddings = build_embeddings(config)
+    docs = load_documents(config.docs_dir)
+    split_docs = split_documents(
+        docs,
+        chunk_size=config.chunk_size,
+        chunk_overlap=config.chunk_overlap,
+    )
+    embeddings = build_embeddings(config.embedding_model)
     store = FAISS.from_documents(split_docs, embeddings)
     config.vectorstore_dir.mkdir(parents=True, exist_ok=True)
     store.save_local(str(config.vectorstore_dir))
@@ -35,7 +41,7 @@ def _build_vectorstore(config: VectorStoreConfig) -> FAISS:
 
 
 def load_vectorstore(config: VectorStoreConfig) -> FAISS:
-    embeddings = build_embeddings(config)
+    embeddings = build_embeddings(config.embedding_model)
     index_file = config.vectorstore_dir / "index.faiss"
     if not index_file.exists():
         raise FileNotFoundError(

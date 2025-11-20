@@ -40,16 +40,10 @@ def build_action_tools(executor: ExecutorService) -> Dict[str, BaseTool]:
         """Summarize the completed mission."""
         return executor.summarize_mission(summary)
 
-    @tool("wait")
-    def wait_tool(seconds: float = 1) -> Dict[str, float]:
-        """Pause execution for the requested number of seconds."""
-        wait_seconds = max(float(seconds), 0)
-        return executor.wait(wait_seconds)
 
     return {
         "navigate": navigate_tool,
         "observe_scene": observe_scene_tool,
         "deliver_object": deliver_object_tool,
         "summarize_mission": summarize_mission_tool,
-        "wait": wait_tool,
     }

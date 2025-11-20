@@ -41,5 +41,3 @@ class ExecutorService:
             "message": summary or "임무 요약이 준비되었습니다.",
         }
 
-    def wait(self, seconds: int = 1) -> Dict[str, Any]:
-        return {"status": "waiting", "seconds": seconds}

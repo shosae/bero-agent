@@ -6,16 +6,27 @@ from pathlib import Path
 
 from langchain_community.vectorstores import FAISS
 
-from rln_rag.vectorstore import (
+from app.services.vectorstore_utils import (
     load_documents,
     split_documents,
     build_embeddings,
 )
 
 
-def build_vectorstore(docs_dir: Path, vectorstore_dir: Path, embedding_model: str) -> FAISS:
+def build_vectorstore(
+    docs_dir: Path,
+    vectorstore_dir: Path,
+    embedding_model: str,
+    *,
+    chunk_size: int = 700,
+    chunk_overlap: int = 150,
+) -> FAISS:
     docs = load_documents(docs_dir)
-    chunks = split_documents(docs, docs_dir)
+    chunks = split_documents(
+        docs,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
     embeddings = build_embeddings(embedding_model)
     store = FAISS.from_documents(chunks, embeddings)
     vectorstore_dir.mkdir(parents=True, exist_ok=True)

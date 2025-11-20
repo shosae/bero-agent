@@ -27,13 +27,6 @@ def report_tool(content: str) -> Dict[str, Any]:
     """Send a textual report back to the requesting user."""
     return _executor.report(content)
 
-
-@tool("wait")
-def wait_tool(seconds: int = 1) -> Dict[str, Any]:
-    """Simulate a blocking wait."""
-    return _executor.wait(seconds)
-
-
 @tool("observe_scene")
 def observe_scene_tool(target: str, query: str | None = None) -> Dict[str, Any]:
     """Simulate observing a physical location."""
