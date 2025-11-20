@@ -36,7 +36,10 @@ def build_orchestrator_graph(llm, retriever, executor: ExecutorService):
     def classify_intent(state: OrchestratorState) -> OrchestratorState:
         question = state.get("question", "")
         mode = classify(question)
-        return {"mode": mode}
+        return {
+            "mode": mode,
+            "plan_attempts": 0,
+        }
 
     def conversation(state: OrchestratorState) -> OrchestratorState:
         answer = run_conversation_node(state.get("question", ""), llm, retriever)
