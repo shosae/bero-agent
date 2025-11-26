@@ -29,9 +29,9 @@
     },
     {
       "name": "deliver_object",
-      "description": "지정된 위치에서 물건을 전달하거나 건넨다.",
+      "description": "지정된 위치에서 기다리며 사람이 물건을 가져갈때까지 기다림. target은 사용자가 배달을 요청한 물품임",
       "required_params": ["target"],
-      "nl_params": [],
+      "nl_params": ["target"],
       "trigger_phrases": [
         "전달해줘",
         "전달해 줘",
@@ -41,7 +41,8 @@
         "전해 줘",
         "드리고 와",
         "건네",
-        "두고 와"
+        "주고와",
+        "주고 와"
       ]
     },
     {

@@ -15,6 +15,10 @@
     {
       "id": "basecamp",
       "description": "로봇의 기본 대기 장소. summarize_mission 전에 반드시 돌아와야 함."
+    },
+    {
+      "id": "stage_front",
+      "description": "발표중인 장소. 무대 앞 또는 무대."
     }
   ]
 }
