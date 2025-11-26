@@ -51,11 +51,18 @@ class RobotGrpcClient:
         response = stub.DescribeScene(request)
         return response.success, response.description
 
-    def deliver(self, receiver: str, item: str | None = None) -> Tuple[bool, str]:
-        """Temporary deliver helper that reuses Navigate RPC for waypoint hopping."""
-        message_suffix = f"{item or '물품'} 전달 요청"
-        response = self._get_stub().Navigate(
-            bero_pb2.NavigateRequest(waypoint=receiver)
-        )
-        combined_message = f"{message_suffix}: {response.message}"
-        return response.success, combined_message
+    def deliver(self) -> Tuple[bool, str]:
+        """
+        Invoke Deliver RPC with a FIXED message.
+        Blocks until user presses 'Confirm' on robot UI.
+        """
+        # ★ 메시지 고정 (User 요청 사항)
+        fixed_msg = "도착했습니다.\n수령 확인 버튼을 눌러주세요."
+        
+        request = bero_pb2.DeliverRequest(message=fixed_msg)
+        stub = self._get_stub()
+        
+        # 로봇 UI에서 버튼 눌릴 때까지 대기 (Blocking)
+        response = stub.Deliver(request)
+        
+        return response.success, "Delivery Confirmed"

@@ -2,28 +2,63 @@ syntax = "proto3";
 
 package bero;
 
-// Robot 상위 제어 인터페이스
+// ==========================================================
+// 1. Robot Service (로봇에서 실행, 노트북이 Client로 호출)
+//    노트북 -> 로봇: "주방으로 이동해", "화면 띄우고 대기해"
+// ==========================================================
 service RobotController {
+  // [이동 담당] 목적지로 이동하고 도착하면 성공 반환
   rpc Navigate(NavigateRequest) returns (NavigateResponse);
-  rpc DescribeScene(SceneRequest) returns (SceneResponse); // 상황 설명
+
+  // [배달/대기 담당] 제자리에서 UI 띄우고 확인 누를 때까지 대기 (Blocking)
+  rpc Deliver(DeliverRequest) returns (DeliverResponse);
+
+  // (옵션) VLM 상황 설명
+  rpc DescribeScene(SceneRequest) returns (SceneResponse);
 }
 
-// ===== Navigation =====
+// --- Navigate 관련 메시지 ---
 message NavigateRequest {
-  string waypoint = 1; // 이동할 waypoint 이름
+  string waypoint = 1; // "Table 1", "Kitchen" 등
 }
 
 message NavigateResponse {
   bool success = 1;
-  string message = 2;
+  string message = 2; // "Arrived" or "Failed"
 }
 
-// ===== Situation Awareness (VLM 기반 상황 설명) =====
+// --- Deliver 관련 메시지 ---
+message DeliverRequest {
+  string message = 1; // 화면에 표시할 텍스트 (예: "도착했습니다. 확인 눌러주세요")
+}
+
+message DeliverResponse {
+  bool success = 1; // 사용자가 버튼을 눌러서 완료되면 True
+}
+
+// --- VLM 관련 메시지 ---
 message SceneRequest {
-  string prompt = 1; // "복도에 사람이 있는지 알려줘"
+  string prompt = 1;
 }
 
 message SceneResponse {
   bool success = 1;
-  string description = 2; // "복도에 두 명의 사람이 있습니다."
+  string description = 2;
+}
+
+// ==========================================================
+// 2. Brain Service (노트북에서 실행, 로봇이 Client로 호출)
+//    로봇 -> 노트북: "나 이거 들었어(STT), 처리해줘"
+// ==========================================================
+service RobotBrain {
+  // 로봇은 이 함수를 호출하고, 모든 처리가 끝날 때까지 대기함 (Blocking)
+  rpc ProcessCommand(ChatRequest) returns (ChatResponse);
+}
+
+message ChatRequest {
+  string text = 1; // STT된 사용자 발화 ("커피 배달해줘")
+}
+
+message ChatResponse {
+  string reply = 1; // 로봇이 최종적으로 말할 대답 ("네, 출발합니다")
 }

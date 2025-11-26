@@ -40,10 +40,16 @@ def build_action_tools(executor: ExecutorService) -> Dict[str, BaseTool]:
         """Summarize the completed mission."""
         return executor.summarize_mission(summary)
 
+    @tool("wait")
+    def wait_tool() -> Dict[str, str]:
+        """Stay put until further notice."""
+        return executor.wait()
+
 
     return {
         "navigate": navigate_tool,
         "observe_scene": observe_scene_tool,
         "deliver_object": deliver_object_tool,
         "summarize_mission": summarize_mission_tool,
+        "wait": wait_tool,
     }

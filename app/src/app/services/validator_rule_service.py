@@ -92,16 +92,16 @@ def _summarize_last_rule(steps: Sequence[Dict[str, Any]]) -> List[str]:
 
 def _basecamp_before_summarize(steps):
     errors = []
-    if len(steps) < 2:
-        return errors
+    # if len(steps) < 2:
+    #     return errors
 
-    if steps[-1].get("action") != "summarize_mission":
-        errors.append("마지막 action은 summarize_mission이어야 합니다.")
-        return errors
+    # if steps[-1].get("action") != "summarize_mission":
+    #     errors.append("마지막 action은 summarize_mission이어야 합니다.")
+    #     return errors
 
-    prev = steps[-2]
-    if prev.get("action") != "navigate" or prev.get("params", {}).get("target") != "basecamp":
-        errors.append("summarize_mission 직전은 navigate(target='basecamp')여야 합니다.")
+    # prev = steps[-2]
+    # if prev.get("action") != "navigate" or prev.get("params", {}).get("target") != "basecamp":
+    #     errors.append("summarize_mission 직전은 navigate(target='basecamp')여야 합니다.")
     return errors
 
 
@@ -160,16 +160,18 @@ class RuleBasedValidator:
 
             # action 유효
             if action not in self.allowed_actions:
-                # result.add_error(f"[step {idx}] 허용되지 않은 action: {action}")
-                # continue
-                pass
+                result.add_error(
+                    f"[step {idx}] 허용되지 않은 action '{action}' 입니다."
+                )
+                continue
 
             # target 유효
             if action == "navigate":
-                # tgt = params.get("target")
-                # if tgt not in self.allowed_locations:
-                #     result.add_error(f"[step {idx}] 잘못된 target 장소: {tgt}")
-                pass
+                tgt = params.get("target")
+                if tgt not in self.allowed_locations:
+                    result.add_error(
+                        f"[step {idx}] 잘못된 target 장소 '{tgt}' 입니다."
+                    )
 
             # params 텍스트 규칙: substring + escape 금지
             for key, val in params.items():

@@ -28,7 +28,7 @@ def load_settings() -> AppSettings:
         vectorstore_dir=Path(os.getenv("VECTORSTORE_DIR", root / "artifacts" / "vectorstore")).resolve(),
         embedding_model=os.getenv("EMBEDDINGS_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
         waypoint_docs_dir=Path(os.getenv("WAYPOINT_DIR", root / "data" / "seed")).resolve(),
-        llm_provider=os.getenv("LLM_PROVIDER", "langgraph"),
+        llm_provider=os.getenv("LLM_PROVIDER", "ollama"),
         # llm_model=os.getenv("LLM_MODEL", "llama3.1-8b-local"),
         llm_model=os.getenv("LLM_MODEL", "llama3-bllossom-local"),
         temperature=float(os.getenv("LLM_TEMPERATURE", "0")),

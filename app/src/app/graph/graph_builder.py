@@ -17,6 +17,7 @@ from app.graph.nodes.intent_node import classify_intent as classify
 from app.graph.nodes.validator_node import run_validator
 from app.services.executor_service import ExecutorService
 from app.services.mission_summary_service import MissionSummaryService
+from app.services.planner_service import PlannerUnsupportedError
 
 
 _ARTIFACT_DIR = Path(__file__).resolve().parents[3] / "artifacts"
@@ -150,6 +151,22 @@ def _format_plan_history(plan_history: List[Dict[str, Any]] | None) -> str:
     return "\n".join(lines)
 
 
+_UNSUPPORTED_ERROR_MARKERS = (
+    "허용되지 않은 action",
+    "잘못된 target 장소",
+)
+
+_UNSUPPORTED_PLAN_MESSAGE = "해당 요청은 아직 지원하지 않고 있어요. 다른 요청을 도와드릴까요?"
+
+
+def _has_unsupported_plan_error(errors: List[str]) -> bool:
+    for err in errors:
+        for marker in _UNSUPPORTED_ERROR_MARKERS:
+            if marker in err:
+                return True
+    return False
+
+
 class OrchestratorState(TypedDict, total=False):
     question: str
     mode: Literal["conversation", "plan"]
@@ -207,6 +224,10 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
         override = state.get("conversation_override")
         if override:
             return {"answer": override, "conversation_override": ""}
+
+        if state.get("plan_status") == "unsupported":
+            return {"answer": _UNSUPPORTED_PLAN_MESSAGE}
+
         conv_mode = state.get("conversation_mode", "normal")
         if conv_mode == "unsupported":
             base = "아직은 이런 요청을 도와드리기 어려워요. 다른 도움을 드릴 수 있을까요?"
@@ -233,12 +254,36 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
 
     def plan_and_execute(state: OrchestratorState) -> OrchestratorState:
         feedback = (state.get("plan_feedback") or "").strip()
-        result = run_plan_node(
-            state.get("question", ""),
-            llm,
-            [],
-            retry_feedback=feedback if feedback else None,
-        )
+        attempts = int(state.get("plan_attempts") or 0) + 1
+        try:
+            result = run_plan_node(
+                state.get("question", ""),
+                llm,
+                [],
+                retry_feedback=feedback if feedback else None,
+            )
+        except PlannerUnsupportedError as exc:
+            _append_trace_entry(
+                question=state.get("question", ""),
+                phase="plan",
+                payload={
+                    "attempt": attempts,
+                    "error": "unsupported_plan",
+                    "reason": str(exc),
+                },
+            )
+            return {
+                "plan": {},
+                "plan_queue": [],
+                "plan_attempts": attempts,
+                "plan_status": "unsupported",
+                "plan_feedback": "",
+                "plan_history": state.get("plan_history") or [],
+                "conversation_override": (
+                    str(exc).strip() or _UNSUPPORTED_PLAN_MESSAGE
+                ),
+            }
+
         plan_queue = list(result.plan.get("plan", []))
         plan_history = list(state.get("plan_history") or [])
         plan_history.append(
@@ -247,7 +292,6 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
                 "plan": result.plan,
             }
         )
-        attempts = int(state.get("plan_attempts") or 0) + 1
         _append_trace_entry(
             question=state.get("question", ""),
             phase="plan",
@@ -269,6 +313,18 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
 
     def validate_plan_node(state: OrchestratorState) -> OrchestratorState:
         plan_obj = state.get("plan")
+        if state.get("plan_status") == "unsupported":
+            answer = (
+                state.get("conversation_override")
+                or _UNSUPPORTED_PLAN_MESSAGE
+            )
+            return {
+                "validation": None,
+                "plan_status": "unsupported",
+                "plan_queue": [],
+                "conversation_override": answer,
+                "plan_feedback": "",
+            }
         if not plan_obj:
             return {
                 "plan_status": "failed",
@@ -293,6 +349,8 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
             attempts = int(state.get("plan_attempts") or 0)
             if not validation.is_valid:
                 status = "retry" if attempts < MAX_PLAN_RETRIES else "failed"
+            if not validation.is_valid and _has_unsupported_plan_error(validation.errors):
+                status = "unsupported"
 
         _append_validation_log(
             question=question,
@@ -316,6 +374,16 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
             reason_text = (llm_reason or "").strip()
             base = "죄송하지만 이 요청을 수행할 수 없습니다. 다른 요청을 해주시겠어요?"
             answer = f"{base}\n\n상세: {reason_text}" if reason_text else base
+            return {
+                "validation": validation,
+                "plan_status": "unsupported",
+                "plan_queue": [],
+                "conversation_override": answer,
+                "plan_feedback": "",
+            }
+
+        if status == "unsupported":
+            answer = _UNSUPPORTED_PLAN_MESSAGE
             return {
                 "validation": validation,
                 "plan_status": "unsupported",

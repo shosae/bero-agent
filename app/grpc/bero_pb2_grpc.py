@@ -26,7 +26,10 @@ if _version_not_supported:
 
 
 class RobotControllerStub(object):
-    """Robot 상위 제어 인터페이스
+    """==========================================================
+    1. Robot Service (로봇에서 실행, 노트북이 Client로 호출)
+    노트북 -> 로봇: "주방으로 이동해", "화면 띄우고 대기해"
+    ==========================================================
     """
 
     def __init__(self, channel):
@@ -40,6 +43,11 @@ class RobotControllerStub(object):
                 request_serializer=bero__pb2.NavigateRequest.SerializeToString,
                 response_deserializer=bero__pb2.NavigateResponse.FromString,
                 _registered_method=True)
+        self.Deliver = channel.unary_unary(
+                '/bero.RobotController/Deliver',
+                request_serializer=bero__pb2.DeliverRequest.SerializeToString,
+                response_deserializer=bero__pb2.DeliverResponse.FromString,
+                _registered_method=True)
         self.DescribeScene = channel.unary_unary(
                 '/bero.RobotController/DescribeScene',
                 request_serializer=bero__pb2.SceneRequest.SerializeToString,
@@ -48,17 +56,28 @@ class RobotControllerStub(object):
 
 
 class RobotControllerServicer(object):
-    """Robot 상위 제어 인터페이스
+    """==========================================================
+    1. Robot Service (로봇에서 실행, 노트북이 Client로 호출)
+    노트북 -> 로봇: "주방으로 이동해", "화면 띄우고 대기해"
+    ==========================================================
     """
 
     def Navigate(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """[이동 담당] 목적지로 이동하고 도착하면 성공 반환
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Deliver(self, request, context):
+        """[배달/대기 담당] 제자리에서 UI 띄우고 확인 누를 때까지 대기 (Blocking)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def DescribeScene(self, request, context):
-        """상황 설명
+        """(옵션) VLM 상황 설명
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -71,6 +90,11 @@ def add_RobotControllerServicer_to_server(servicer, server):
                     servicer.Navigate,
                     request_deserializer=bero__pb2.NavigateRequest.FromString,
                     response_serializer=bero__pb2.NavigateResponse.SerializeToString,
+            ),
+            'Deliver': grpc.unary_unary_rpc_method_handler(
+                    servicer.Deliver,
+                    request_deserializer=bero__pb2.DeliverRequest.FromString,
+                    response_serializer=bero__pb2.DeliverResponse.SerializeToString,
             ),
             'DescribeScene': grpc.unary_unary_rpc_method_handler(
                     servicer.DescribeScene,
@@ -86,7 +110,10 @@ def add_RobotControllerServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class RobotController(object):
-    """Robot 상위 제어 인터페이스
+    """==========================================================
+    1. Robot Service (로봇에서 실행, 노트북이 Client로 호출)
+    노트북 -> 로봇: "주방으로 이동해", "화면 띄우고 대기해"
+    ==========================================================
     """
 
     @staticmethod
@@ -117,6 +144,33 @@ class RobotController(object):
             _registered_method=True)
 
     @staticmethod
+    def Deliver(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bero.RobotController/Deliver',
+            bero__pb2.DeliverRequest.SerializeToString,
+            bero__pb2.DeliverResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def DescribeScene(request,
             target,
             options=(),
@@ -133,6 +187,91 @@ class RobotController(object):
             '/bero.RobotController/DescribeScene',
             bero__pb2.SceneRequest.SerializeToString,
             bero__pb2.SceneResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class RobotBrainStub(object):
+    """==========================================================
+    2. Brain Service (노트북에서 실행, 로봇이 Client로 호출)
+    로봇 -> 노트북: "나 이거 들었어(STT), 처리해줘"
+    ==========================================================
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.ProcessCommand = channel.unary_unary(
+                '/bero.RobotBrain/ProcessCommand',
+                request_serializer=bero__pb2.ChatRequest.SerializeToString,
+                response_deserializer=bero__pb2.ChatResponse.FromString,
+                _registered_method=True)
+
+
+class RobotBrainServicer(object):
+    """==========================================================
+    2. Brain Service (노트북에서 실행, 로봇이 Client로 호출)
+    로봇 -> 노트북: "나 이거 들었어(STT), 처리해줘"
+    ==========================================================
+    """
+
+    def ProcessCommand(self, request, context):
+        """로봇은 이 함수를 호출하고, 모든 처리가 끝날 때까지 대기함 (Blocking)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_RobotBrainServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'ProcessCommand': grpc.unary_unary_rpc_method_handler(
+                    servicer.ProcessCommand,
+                    request_deserializer=bero__pb2.ChatRequest.FromString,
+                    response_serializer=bero__pb2.ChatResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'bero.RobotBrain', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('bero.RobotBrain', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class RobotBrain(object):
+    """==========================================================
+    2. Brain Service (노트북에서 실행, 로봇이 Client로 호출)
+    로봇 -> 노트북: "나 이거 들었어(STT), 처리해줘"
+    ==========================================================
+    """
+
+    @staticmethod
+    def ProcessCommand(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bero.RobotBrain/ProcessCommand',
+            bero__pb2.ChatRequest.SerializeToString,
+            bero__pb2.ChatResponse.FromString,
             options,
             channel_credentials,
             insecure,

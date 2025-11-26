@@ -9,7 +9,8 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 from langchain_core.language_models.chat_models import BaseChatModel
-from pydantic import BaseModel, Field, field_validator, model_validator
+from langchain_core.exceptions import OutputParserException
+from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
 
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -47,6 +48,19 @@ class Step(BaseModel):
 class Plan(BaseModel):
     plan: List[Step] = Field(default_factory=list)
 
+class PlannerUnsupportedError(RuntimeError):
+    """Raised when planner output references unsupported actions or locations."""
+    pass
+
+
+def _infer_unsupported_message(error_text: str) -> str:
+    lowered = (error_text or "").lower()
+    if ("action" in lowered or "허용되지 않은 action" in error_text):
+        return "해당 행동은 수행할 수 없어요. 다른 요청을 도와드릴까요?"
+    if "target" in lowered or "장소" in lowered:
+        return "해당 장소로는 갈 수 없어요. 다른 요청을 도와드릴까요?"
+    return "요청하신 행동이나 위치는 아직 지원하지 못해요. 다른 요청을 도와드릴까요?"
+
 
 # ---------- HINTS (메타 규칙만 남김) ----------
 
@@ -55,6 +69,9 @@ DEFAULT_HINTS = r"""
 1. **순서 준수:** 사용자가 여러 장소나 행동을 언급했다면, 반드시 **발화된 순서대로** PLAN을 구성해야 한다.
 2. **데이터 기반:** 오직 제공된 `Location List`와 `Action List`에 정의된 항목만 사용할 수 있다. 없는 장소나 행동은 생성하지 않는다.
 3. **이동 우선(Implicit Navigation):** "복도 확인해"처럼 행동의 대상이 **특정 장소**라면, 반드시 그 장소로 **먼저 이동(navigate)한 후** 행동해야 한다. (바로 action 금지)
+4. **미션 종료 하드 규칙:** 사용자가 "거기 계속 있어라", "대기해", "머물러 있어", 기다려 등 **명시적으로 특정 위치에 계속 머무르라고 지시하는 표현**을 사용하지 않은 이상,
+   모든 PLAN은 **반드시** basecamp로 복귀한 뒤 summarize_mission으로 끝나야 한다.
+   (예외가 아닌데 마지막 두 step이 navigate(basecamp)와 summarize_mission이 아니면 잘못된 PLAN이다.)
 
 [파라미터 추출 규칙 (nl_params)]
 - Action 정의에 `nl_params`(예: question, instruction, target)가 있다면, 그 값은 **사용자 원문에서 해당 부분의 구절(Substring)을 그대로 복사**해야 한다.
@@ -85,6 +102,32 @@ PLAN_SYSTEM_PROMPT = r"""
 
 - JSON 앞뒤에 자연어 설명, 마크다운 코드 블록, 주석, 기타 문자를 절대 추가하지 마라.
 - 오직 위 스키마를 따르는 JSON만 출력한다.
+
+============================================================
+[0-1] PLAN Tail 하드 규칙 (위반 시 잘못된 PLAN)
+============================================================
+
+- **기본 원칙:**
+  - 사용자가 "거기 계속 있어라", "그 자리에서 대기해", "그 위치에서 계속 봐줘"처럼
+    **명시적으로 특정 위치에 머무르라고 지시하는 표현**을 사용하지 않은 이상,
+    모든 미션은 **반드시 basecamp로 복귀한 뒤 summarize_mission으로 끝나야 한다.**
+
+- 따라서 plan 배열의 **마지막 두 step은 항상** 아래와 같아야 한다.
+
+  1) { "action": "navigate", "params": { "target": "basecamp" } }
+  2) { "action": "summarize_mission", "params": {} }
+
+- 사용자가 "와", "돌아와", "하고 와", "갔다 와", "해주고 와" 등
+  복귀를 암시하는 표현을 쓰든 쓰지 않든,
+  **예외적 지시(계속 있어, 대기해 등)가 없다면** 위 두 step을 반드시 마지막에 넣어야 한다.
+
+- 예외:
+  - 오직 사용자 발화에
+    - "거기 계속 있어", "그 자리에서 대기해", "머물러 있어", "그 위치에서 계속 보고 있어"
+    와 같이 **특정 위치에서 계속 머무르라고 분명하게 지시하는 표현**이 포함된 경우에만,
+    basecamp로 복귀하지 않고 해당 위치에서 미션을 끝낼 수 있다.
+  - 이 예외가 아닌데 마지막 두 step이 위 형태가 아니라면,
+    그 PLAN은 **잘못된 PLAN**이다.
 
 ============================================================
 [1] Action List (사용 가능한 행동)
@@ -145,21 +188,17 @@ PLAN_SYSTEM_PROMPT = r"""
   - 예: "불 났는지 확인해" → question="불 났는지 확인해"
 
 ============================================================
-[5] 미션 종료 규칙
+[5] 미션 종료 규칙 (요약)
 ============================================================
 
-사용자가 요청한 모든 [이동 → 행동들]이 끝난 후,
-항상 다음 두 step을 마지막에 추가해야 한다.
+- 다시 한 번 강조한다.
+  - 사용자가 "거기 계속 있어라", "대기해", "머물러 있어" 등 **특정 위치에 머무르라는 지시**를 하지 않은 경우,
+    모든 PLAN은 **반드시** 아래 두 step으로 끝나야 한다.
 
-1) { "action": "navigate", "params": { "target": "basecamp" } }
-2) { "action": "summarize_mission", "params": {} }
+    1) { "action": "navigate", "params": { "target": "basecamp" } }
+    2) { "action": "summarize_mission", "params": {} }
 
-!!!! ** 매우 중요** !!!!
-또한 사용자의 요청이 "와", "돌아와", "하고 와", "갔다와", "해주고 와" 등
-복귀를 암시하는 표현으로 끝나는 경우,
-해당 표현이 있든 없든 무조건 basecamp로 복귀 후 summarize_mission을 실행해야 한다.
-**문장 후반부에서 복귀를 의미하는 표현이 있으면 반드시
-{navigate basecamp → summarize_mission}를 마지막에 넣어야 한다.**
+- 이 규칙을 지키지 않은 PLAN은 잘못된 PLAN으로 간주된다.
 
 ============================================================
 [6] 예시
@@ -179,17 +218,33 @@ PLAN_SYSTEM_PROMPT = r"""
     { "action": "summarize_mission", "params": {} }
   ]
 }
+
+사용자 요청: "무대에서 뭘 하고있는지 보고와"
+
+{
+  "plan": [
+    { "action": "navigate", "params": { "target": "stage_front" } },
+    { "action": "observe_scene", "params": { "question": "뭘 하고있는지 보고와" } },
+    
+    { "action": "navigate", "params": { "target": "basecamp" } },
+    { "action": "summarize_mission", "params": {} }
+  ]
+}
+
 """
 
 USER_QUESTION_PROMPT = """
 사용자의 요청:
 {{question}}
 
-[필수 주의사항]
-사용자 요청을 모두 수행한 뒤, 반드시!! 아래 두 단계를 추가하여 계획을 끝내라.
+[필수 주의사항 – 하드 규칙]
+- 사용자가 "거기 계속 있어라", "그 자리에서 대기해", "머물러 있어" 등
+  **특정 위치에 계속 머무르라고 명시적으로 지시하지 않은 경우**,
+  모든 PLAN은 무조건 아래 두 단계를 마지막에 포함해야 한다.
+  이를 지키지 않으면 잘못된 PLAN이다.
+
 1. navigate(target="basecamp")
 2. summarize_mission
-이것을 어기면 시스템 에러가 발생한다.
 """
 USER_HINTS_PROMPT = """
 참고 힌트(HINTS):
@@ -240,9 +295,11 @@ def _get_allowed_locations() -> set[str]:
         _ALLOWED_LOCATIONS = {loc["id"] for loc in _get_locations_seed()}
     return _ALLOWED_LOCATIONS
 
+
 @dataclass(slots=True)
 class PlannerDependencies:
     llm: BaseChatModel
+
 
 def _build_plan_chain(llm: BaseChatModel):
     prompt = ChatPromptTemplate.from_messages(
@@ -263,6 +320,7 @@ def _build_plan_chain(llm: BaseChatModel):
     )
     return prompt | llm.with_structured_output(Plan)
 
+
 def generate_plan(
     question: str,
     llm: BaseChatModel,
@@ -275,14 +333,19 @@ def generate_plan(
     chain = _build_plan_chain(llm)
 
     # hints에는 이제 특정 액션 이름이 들어가지 않음 (Generic Logic)
-    plan_obj = chain.invoke(
-        {
-            "question": question,
-            "hints": DEFAULT_HINTS, 
-            "actions": actions,
-            "locations": locations,
-        }
-    )
+    try:
+        plan_obj = chain.invoke(
+            {
+                "question": question,
+                "hints": DEFAULT_HINTS,
+                "actions": actions,
+                "locations": locations,
+            }
+        )
+    except (ValidationError, OutputParserException) as exc:
+        raise PlannerUnsupportedError(
+            _infer_unsupported_message(str(exc))
+        ) from exc
 
     plan_dict = plan_obj.model_dump() if isinstance(plan_obj, Plan) else plan_obj
     return plan_dict, docs

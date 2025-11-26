@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nbero.proto\x12\x04\x62\x65ro\"#\n\x0fNavigateRequest\x12\x10\n\x08waypoint\x18\x01 \x01(\t\"4\n\x10NavigateResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1e\n\x0cSceneRequest\x12\x0e\n\x06prompt\x18\x01 \x01(\t\"5\n\rSceneResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t2\x86\x01\n\x0fRobotController\x12\x39\n\x08Navigate\x12\x15.bero.NavigateRequest\x1a\x16.bero.NavigateResponse\x12\x38\n\rDescribeScene\x12\x12.bero.SceneRequest\x1a\x13.bero.SceneResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nbero.proto\x12\x04\x62\x65ro\"#\n\x0fNavigateRequest\x12\x10\n\x08waypoint\x18\x01 \x01(\t\"4\n\x10NavigateResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"!\n\x0e\x44\x65liverRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\"\n\x0f\x44\x65liverResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\x1e\n\x0cSceneRequest\x12\x0e\n\x06prompt\x18\x01 \x01(\t\"5\n\rSceneResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\"\x1b\n\x0b\x43hatRequest\x12\x0c\n\x04text\x18\x01 \x01(\t\"\x1d\n\x0c\x43hatResponse\x12\r\n\x05reply\x18\x01 \x01(\t2\xbe\x01\n\x0fRobotController\x12\x39\n\x08Navigate\x12\x15.bero.NavigateRequest\x1a\x16.bero.NavigateResponse\x12\x36\n\x07\x44\x65liver\x12\x14.bero.DeliverRequest\x1a\x15.bero.DeliverResponse\x12\x38\n\rDescribeScene\x12\x12.bero.SceneRequest\x1a\x13.bero.SceneResponse2E\n\nRobotBrain\x12\x37\n\x0eProcessCommand\x12\x11.bero.ChatRequest\x1a\x12.bero.ChatResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,10 +35,20 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_NAVIGATEREQUEST']._serialized_end=55
   _globals['_NAVIGATERESPONSE']._serialized_start=57
   _globals['_NAVIGATERESPONSE']._serialized_end=109
-  _globals['_SCENEREQUEST']._serialized_start=111
-  _globals['_SCENEREQUEST']._serialized_end=141
-  _globals['_SCENERESPONSE']._serialized_start=143
-  _globals['_SCENERESPONSE']._serialized_end=196
-  _globals['_ROBOTCONTROLLER']._serialized_start=199
-  _globals['_ROBOTCONTROLLER']._serialized_end=333
+  _globals['_DELIVERREQUEST']._serialized_start=111
+  _globals['_DELIVERREQUEST']._serialized_end=144
+  _globals['_DELIVERRESPONSE']._serialized_start=146
+  _globals['_DELIVERRESPONSE']._serialized_end=180
+  _globals['_SCENEREQUEST']._serialized_start=182
+  _globals['_SCENEREQUEST']._serialized_end=212
+  _globals['_SCENERESPONSE']._serialized_start=214
+  _globals['_SCENERESPONSE']._serialized_end=267
+  _globals['_CHATREQUEST']._serialized_start=269
+  _globals['_CHATREQUEST']._serialized_end=296
+  _globals['_CHATRESPONSE']._serialized_start=298
+  _globals['_CHATRESPONSE']._serialized_end=327
+  _globals['_ROBOTCONTROLLER']._serialized_start=330
+  _globals['_ROBOTCONTROLLER']._serialized_end=520
+  _globals['_ROBOTBRAIN']._serialized_start=522
+  _globals['_ROBOTBRAIN']._serialized_end=591
 # @@protoc_insertion_point(module_scope)
