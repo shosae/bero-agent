@@ -30,7 +30,7 @@
     },
     {
       "name": "deliver_object",
-      "description": "지정된 위치에서 기다리며 사람이 물건을 가져갈때까지 기다림. target은 사용자가 배달을 요청한 물품임",
+      "description": "지정된 위치에서 기다리며 사람이 물건을 가져갈때까지 기다림.",
       "required_params": ["item"],
       "nl_params": ["item"],
       "trigger_phrases": [
@@ -68,9 +68,24 @@
       "trigger_phrases": [
         "거기 있어",
         "기다려",
-        "대기해"
+        "대기해",
+        "거기 있어",
+        "거기서 멈춰있어",
+        "어디 가지 마",
+        "대기하고 있어"
+      ]
+    },
+    {
+      "name": "talk",
+      "description": "사용자가 상대방에게 원하는 질문을 해준다.",
+      "required_params": ["question"],
+      "nl_params": ["question"],
+      "trigger_phrases": [
+        "물어봐줘",
+        "물어보고 와",
+        "알려달라해",
+        "한번 물어봐봐"
       ]
     }
-
   ]
 }

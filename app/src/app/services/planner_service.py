@@ -41,23 +41,27 @@ class Step(BaseModel):
             target = params.get("target")
             if target not in _get_allowed_locations():
                 allowed = ", ".join(sorted(_get_allowed_locations()))
-                raise ValueError(f"navigate target '{target}' 가 허용된 장소({allowed})에 없습니다.")
+                raise ValueError(
+                    f"navigate target '{target}' 가 허용된 장소({allowed})에 없습니다."
+                )
         return values
 
 
 class Plan(BaseModel):
     plan: List[Step] = Field(default_factory=list)
 
+
 class PlannerUnsupportedError(RuntimeError):
     """Raised when planner output references unsupported actions or locations."""
+
     pass
 
 
 def _infer_unsupported_message(error_text: str) -> str:
     lowered = (error_text or "").lower()
-    if ("action" in lowered or "허용되지 않은 action" in error_text):
+    if ("action" in lowered) or ("허용되지 않은 action" in error_text):
         return "해당 행동은 수행할 수 없어요. 다른 요청을 도와드릴까요?"
-    if "target" in lowered or "장소" in lowered:
+    if ("target" in lowered) or ("장소" in lowered):
         return "해당 장소로는 갈 수 없어요. 다른 요청을 도와드릴까요?"
     return "요청하신 행동이나 위치는 아직 지원하지 못해요. 다른 요청을 도와드릴까요?"
 
@@ -69,9 +73,17 @@ DEFAULT_HINTS = r"""
 1. **순서 준수:** 사용자가 여러 장소나 행동을 언급했다면, 반드시 **발화된 순서대로** PLAN을 구성해야 한다.
 2. **데이터 기반:** 오직 제공된 `Location List`와 `Action List`에 정의된 항목만 사용할 수 있다. 없는 장소나 행동은 생성하지 않는다.
 3. **이동 우선(Implicit Navigation):** "복도 확인해"처럼 행동의 대상이 **특정 장소**라면, 반드시 그 장소로 **먼저 이동(navigate)한 후** 행동해야 한다. (바로 action 금지)
-4. **미션 종료 하드 규칙:** 사용자가 "거기 계속 있어라", "대기해", "머물러 있어", 기다려 등 **명시적으로 특정 위치에 계속 머무르라고 지시하는 표현**을 사용하지 않은 이상,
+4. **미션 종료 하드 규칙:** 사용자가 "거기 계속 있어라", "대기해", "머물러 있어", "기다려" 등 **명시적으로 특정 위치에 계속 머무르라고 지시하는 표현**을 사용하지 않은 이상,
    모든 PLAN은 **반드시** basecamp로 복귀한 뒤 summarize_mission으로 끝나야 한다.
    (예외가 아닌데 마지막 두 step이 navigate(basecamp)와 summarize_mission이 아니면 잘못된 PLAN이다.)
+5. **순수 이동 미션 처리:** 사용자가 특정 위치만 언급하고
+   "갔다 와", "다녀와", "들렀다 와", "갔다가 와" 정도의 표현만 사용하며,
+   무엇을 배달하거나(커피, 서류 등) 무엇을 확인하라는 내용이 없다면,
+   그 미션은 **단순 방문(순수 이동)** 으로 해석한다.
+   - 이 경우 plan에는 해당 위치로의 `navigate`만 넣고,
+     추가 action(deliver_object, observe_scene 등)을 새로 만들지 않는다.
+   - 복귀와 요약은 전역 규칙에 따라
+     `navigate(target="basecamp")` 와 `summarize_mission` 으로 마무리한다.
 
 [파라미터 추출 규칙 (nl_params)]
 - Action 정의에 `nl_params`(예: question, instruction, target)가 있다면, 그 값은 **사용자 원문에서 해당 부분의 구절(Substring)을 그대로 복사**해야 한다.
@@ -108,8 +120,8 @@ PLAN_SYSTEM_PROMPT = r"""
 ============================================================
 
 - **기본 원칙:**
-  - 사용자가 "거기 계속 있어라", "그 자리에서 대기해", "그 위치에서 계속 봐줘"처럼
-    **명시적으로 특정 위치에 머무르라고 지시하는 표현**을 사용하지 않은 이상,
+  - 사용자가 "거기 계속 있어라", "그 자리에서 대기해", "그 위치에서 계속 봐줘",
+    "머물러 있어"처럼 **명시적으로 특정 위치에 머무르라고 지시하는 표현**을 사용하지 않은 이상,
     모든 미션은 **반드시 basecamp로 복귀한 뒤 summarize_mission으로 끝나야 한다.**
 
 - 따라서 plan 배열의 **마지막 두 step은 항상** 아래와 같아야 한다.
@@ -123,7 +135,8 @@ PLAN_SYSTEM_PROMPT = r"""
 
 - 예외:
   - 오직 사용자 발화에
-    - "거기 계속 있어", "그 자리에서 대기해", "머물러 있어", "그 위치에서 계속 보고 있어"
+    - "거기 계속 있어", "그 자리에서 대기해", "머물러 있어",
+      "그 위치에서 계속 보고 있어"
     와 같이 **특정 위치에서 계속 머무르라고 분명하게 지시하는 표현**이 포함된 경우에만,
     basecamp로 복귀하지 않고 해당 위치에서 미션을 끝낼 수 있다.
   - 이 예외가 아닌데 마지막 두 step이 위 형태가 아니라면,
@@ -175,6 +188,21 @@ PLAN_SYSTEM_PROMPT = r"""
 - ❌ basecamp가 아닌 다른 장소에서 summarize_mission을 호출하지 말 것.
 - ❌ Action List / Location List에 없는 이름을 새로 만들지 말 것.
 
+(5) 순수 이동 미션
+- 사용자가 특정 위치만 언급하고
+  "갔다 와", "다녀와", "들렀다 와", "갔다가 와"처럼
+  **단순히 다녀오는 표현만 있고**,  
+  무엇을 배달해 주거나(커피, 서류 등),  
+  무엇을 확인·관찰하라는 질문이 없다면,
+  이 미션은 **순수 이동(단순 방문)** 으로 처리한다.
+- 이 경우 PLAN은 다음과 같이 구성한다.
+  1) { "action": "navigate", "params": { "target": "<해당 위치>" } }
+  2) 마지막에는 전역 규칙에 따라
+     { "action": "navigate", "params": { "target": "basecamp" } },
+     { "action": "summarize_mission", "params": {} } 를 붙인다.
+- 이때 deliver_object, observe_scene 등의 추가 action을
+  사용자가 명시적으로 요구하지 않았다면 **절대 생성하지 않는다.**
+
 ============================================================
 [4] 파라미터 채우기 규칙
 ============================================================
@@ -225,7 +253,18 @@ PLAN_SYSTEM_PROMPT = r"""
   "plan": [
     { "action": "navigate", "params": { "target": "stage_front" } },
     { "action": "observe_scene", "params": { "question": "뭘 하고있는지 보고와" } },
-    
+
+    { "action": "navigate", "params": { "target": "basecamp" } },
+    { "action": "summarize_mission", "params": {} }
+  ]
+}
+
+사용자 요청: "화장실 갔다와"
+
+{
+  "plan": [
+    { "action": "navigate", "params": { "target": "restroom_front" } },
+
     { "action": "navigate", "params": { "target": "basecamp" } },
     { "action": "summarize_mission", "params": {} }
   ]

@@ -23,6 +23,7 @@ from app.services.planner_service import PlannerUnsupportedError
 _ARTIFACT_DIR = Path(__file__).resolve().parents[3] / "artifacts"
 _VALIDATION_LOG = _ARTIFACT_DIR / "plan_validation.log"
 _TRACE_LOG = _ARTIFACT_DIR / "orchestrator_trace.log"
+_EXECUTION_LOG = _ARTIFACT_DIR / "execution_logs.log"
 
 
 def _append_validation_log(
@@ -62,6 +63,21 @@ def _append_trace_entry(
     }
     _TRACE_LOG.parent.mkdir(parents=True, exist_ok=True)
     with _TRACE_LOG.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _append_execution_log(
+    *,
+    question: str,
+    logs: List[Dict[str, Any]],
+) -> None:
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "question": question,
+        "logs": logs,
+    }
+    _EXECUTION_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with _EXECUTION_LOG.open("a", encoding="utf-8") as fp:
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
@@ -463,6 +479,10 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
                 error_message=result.get("message"),
                 failed_step=step,
             )
+            _append_execution_log(
+                question=state.get("question", ""),
+                logs=logs,
+            )
             return {
                 "execution_logs": logs,
                 "current_step": {},
@@ -471,6 +491,11 @@ def build_orchestrator_graph(llm,retriever,executor: ExecutorService):
                 "mission_status": "failed",
                 "failure_context": failure_text,
             }
+        if not remaining:
+            _append_execution_log(
+                question=state.get("question", ""),
+                logs=logs,
+            )
         return {"execution_logs": logs, "current_step": {}}
 
     graph = StateGraph(OrchestratorState)

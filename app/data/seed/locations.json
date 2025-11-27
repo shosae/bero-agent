@@ -19,6 +19,14 @@
     {
       "id": "stage_front",
       "description": "발표중인 장소. 무대 앞 또는 무대."
+    },
+    {
+      "id": "living_room",
+      "description": "거실. 사용자의 집 내부"
+    },
+    {
+      "id": "room",
+      "description": "사용자의 방. 사용자의 기본 생활 공간"
     }
   ]
 }
