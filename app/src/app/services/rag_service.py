@@ -24,6 +24,7 @@ class VectorStoreConfig:
     embedding_model: str
     chunk_size: int = 700
     chunk_overlap: int = 150
+    normalize_embeddings: bool = False
 
 
 def _build_vectorstore(config: VectorStoreConfig) -> FAISS:
@@ -33,7 +34,10 @@ def _build_vectorstore(config: VectorStoreConfig) -> FAISS:
         chunk_size=config.chunk_size,
         chunk_overlap=config.chunk_overlap,
     )
-    embeddings = build_embeddings(config.embedding_model)
+    embeddings = build_embeddings(
+        config.embedding_model,
+        normalize_embeddings=config.normalize_embeddings,
+    )
     store = FAISS.from_documents(split_docs, embeddings)
     config.vectorstore_dir.mkdir(parents=True, exist_ok=True)
     store.save_local(str(config.vectorstore_dir))
@@ -41,7 +45,10 @@ def _build_vectorstore(config: VectorStoreConfig) -> FAISS:
 
 
 def load_vectorstore(config: VectorStoreConfig) -> FAISS:
-    embeddings = build_embeddings(config.embedding_model)
+    embeddings = build_embeddings(
+        config.embedding_model,
+        normalize_embeddings=config.normalize_embeddings,
+    )
     index_file = config.vectorstore_dir / "index.faiss"
     if not index_file.exists():
         raise FileNotFoundError(

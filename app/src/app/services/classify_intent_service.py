@@ -85,16 +85,11 @@ ACTION 이름이나 target을 만들지 말고, 위 세 필드만 채워라.
 **로봇이 고장나거나 폐기될 수 있다**
 
 {% for action in actions %}
-{{ loop.index }}. "{{ action.name }}"
-   - 설명: {{ action.description }}
-   - 필수 파라미터: [{% for p in action.required_params %}"{{ p }}"{% if not loop.last %}, {% endif %}{% endfor %}]
-   - 자연어 파라미터 필드: [{% for p in action.nl_params %}"{{ p }}"{% if not loop.last %}, {% endif %}{% endfor %}]
-   - 대표 트리거 문장:
-     {% if action.trigger_phrases %}
-     {% for phrase in action.trigger_phrases %}"{{ phrase }}"{% if not loop.last %}, {% endif %}{% endfor %}
-     {% else %}
-     (없음)
-     {% endif %}
+- "{{ action.name }}"
+  - 설명: {{ action.description }}
+  - 필수 파라미터: {% if action.required_params %}{{ action.required_params | join(", ") }}{% else %}(없음){% endif %}
+  - 자연어 파라미터 필드: {% if action.nl_params %}{{ action.nl_params | join(", ") }}{% else %}(없음){% endif %}
+  - 대표 트리거 문장: {% if action.trigger_phrases %}{{ action.trigger_phrases | join(", ") }}{% else %}(없음){% endif %}
 
 {% endfor %}
 

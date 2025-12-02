@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -41,6 +41,14 @@ def split_documents(documents: List[Document], *, chunk_size: int, chunk_overlap
     return splitter.split_documents(documents)
 
 
-def build_embeddings(model_name: str) -> HuggingFaceEmbeddings:
+def build_embeddings(
+    model_name: str,
+    *,
+    normalize_embeddings: bool = False,
+) -> HuggingFaceEmbeddings:
     """Create embedding model wrapper."""
-    return HuggingFaceEmbeddings(model_name=model_name)
+    encode_kwargs = {"normalize_embeddings": normalize_embeddings}
+    return HuggingFaceEmbeddings(
+        model_name=model_name,
+        encode_kwargs=encode_kwargs,
+    )
