@@ -143,6 +143,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# OAuth secrets
+Bero/auth/credentials.json
+Bero/auth/token.json
+
 # Local LLM assets & caches
 .ollama/
 .ollama-bin

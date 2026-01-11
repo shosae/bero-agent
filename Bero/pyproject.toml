@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RLN"
+version = "0.1.0"
+description = "RAG LangGraph NAV"
+authors = [
+    { name="shosae" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-huggingface>=0.1.0",
+    "langchain-openai>=0.2.0",
+    "langchain-google-genai>=2.0.0",
+    "langchain-groq>=0.2.0",
+    "huggingface_hub>=0.24.0",
+    "transformers>=4.44.0",
+    "pydantic>=2.0",
+    "python-dotenv",
+    "sentence-transformers",
+    "grpcio>=1.62.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "langgraph-cli[inmem]>=0.4.7",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
